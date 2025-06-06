@@ -26,3 +26,4 @@ if __name__ == "__main__":
         loss = train_epoch(model, train_loader, optimizer, criterion, device)
         print(f"Epoch {epoch+1}, Loss: {loss:.4f}")
     torch.save(model.state_dict(), "./test1/checkpoint/char_autoencoder.pth")
+

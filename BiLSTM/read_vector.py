@@ -13,3 +13,4 @@ model.eval()
 
 x = encode_text("道路拥挤 传达 J9区域").unsqueeze(0).to(device)
 model.save_bottleneck_vec(x,"./test1/data/bottleneck_vec.txt")
+

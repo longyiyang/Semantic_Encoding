@@ -12,7 +12,6 @@ model.eval()
 
 with torch.no_grad():
     outputs = model.load_and_decode("./test1/data/vector.txt", teacher_forcing_ratio=0.5)
-
 pred_ids = outputs.argmax(dim=-1).squeeze(0).cpu().tolist()
 pred_chars = [idx2char.get(i, '') for i in pred_ids]
 print("预测重构:", "".join(pred_chars).strip('<pad>'))
