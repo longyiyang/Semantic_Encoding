@@ -7,7 +7,7 @@ model = TransformerAutoencoder(vocab_size=len(char2idx), max_len=50).to(device)
 model.load_state_dict(torch.load("./Transformer/checkpoint/char_autoencoder.pth", map_location=device))
 model.eval()
 
-input_text = "A8坦克 报告 雷区信息"
+input_text = "通讯小车 报告 VVVV区爆炸物成分"
 input_tensor = encode_text(input_text, char2idx).unsqueeze(0).to(device)
 
 sos_idx = char2idx['<sos>']

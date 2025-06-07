@@ -21,7 +21,7 @@ def build_char2idx_from_file(filepath, add_pad=True):
 
 
 # 假设有个小词表，只示意：字符->索引映射
-char2idx = build_char2idx_from_file('./test1/data/entities.txt')
+char2idx = build_char2idx_from_file('./BiLSTM/data/entities.txt')
 idx2char = {v:k for k,v in char2idx.items()}
 
 def encode_text(text, max_len=50):
@@ -47,5 +47,5 @@ class EntityDataset(Dataset):
         return self.samples[idx]
 
 #创建 DataLoader
-train_dataset = EntityDataset('./test1/data/entities.txt', max_len=50)
+train_dataset = EntityDataset('./BiLSTM/data/entities.txt', max_len=50)
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
