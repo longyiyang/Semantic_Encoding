@@ -1,4 +1,4 @@
-# ✅ 优化版 PyTorch 自编码器：BERT 编码器 + 6维瓶颈 + Transformer 解码器 + Label Smoothing + Teacher Forcing + Mixed Beam-Greedy Decode
+#优化版 PyTorch 自编码器：BERT 编码器 + 6维瓶颈 + Transformer 解码器 + Label Smoothing + Teacher Forcing + Mixed Beam-Greedy Decode
 
 import torch
 import torch.nn as nn
