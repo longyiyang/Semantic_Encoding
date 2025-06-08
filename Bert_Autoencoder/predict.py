@@ -1,22 +1,39 @@
 import torch
-from model import tokenizer,BertAutoEncoder
+from transformers import BertTokenizer
+from model import TextAutoencoder
 
-MAX_LEN = 50
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL_PATH = "./Bert_Autoencoder/checkpoint/bert_autoencoder.pt"
+tokenizer = BertTokenizer.from_pretrained('./Bert_Autoencoder/bert/bert-base-chinese')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# ========== 测试重建 ==========
-model = BertAutoEncoder().to(DEVICE)
-state_dict = torch.load(MODEL_PATH, map_location=DEVICE)
+model = TextAutoencoder()
+model.load_state_dict(torch.load("./Bert_Autoencoder/checkpoint/text_autoencoder.pt", map_location=device))
+model.to(device)
 model.eval()
-test_text = "我爱自然语言处理"
-encoding = tokenizer(test_text, return_tensors='pt', padding='max_length', truncation=True, max_length=MAX_LEN)
-input_ids = encoding['input_ids'].to(DEVICE)
-attn_mask = encoding['attention_mask'].to(DEVICE)
 
-with torch.no_grad():
-    latent = model.encode(input_ids, attn_mask)
-    decoded_text = model.decode(latent)
-    print("原句:", test_text)
-    print("编码向量 (6维):", latent.squeeze().cpu().numpy())
-    print("重建:", decoded_text)
+def generate_text(text, max_len=50):
+    with torch.no_grad():
+        tokens = tokenizer.encode(text, return_tensors='pt').to(device)
+        mask = tokens != tokenizer.pad_token_id
+
+        encoder_output = model.encoder(tokens, attention_mask=mask)
+        cls_embedding = encoder_output.last_hidden_state[:, 0, :]
+        latent = model.projection(cls_embedding)
+        memory = model.decoder_input_proj(latent).unsqueeze(1).transpose(0, 1)
+
+        next_input = torch.tensor([[tokenizer.cls_token_id]], device=device)
+        output_tokens = []
+
+        for _ in range(max_len):
+            tgt_embed = model.token_embedding(next_input).transpose(0, 1)
+            out = model.transformer_decoder(tgt_embed, memory)
+            logits = model.output_proj(out.transpose(0, 1))[:, -1, :]
+            next_token = torch.argmax(logits, dim=-1).unsqueeze(0)
+            output_tokens.append(next_token.item())
+            if next_token.item() == tokenizer.sep_token_id:
+                break
+            next_input = torch.cat([next_input, next_token], dim=1)
+
+        return tokenizer.decode(output_tokens)
+
+# 示例
+print(generate_text("今天的天气怎么样"))

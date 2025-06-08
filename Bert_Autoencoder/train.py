@@ -1,31 +1,47 @@
-from model import BertAutoEncoder,tokenizer
-from utils import SentenceDataset,DataLoader,LabelSmoothingLoss,evaluate_bleu,train
-import torch 
+import torch
+from torch.utils.data import DataLoader
+import torch.nn.functional as F
+from tqdm import tqdm
+from transformers import BertTokenizer
+from model import TextAutoencoder
+from dataset import ChineseTextDataset
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 64
+def load_text_file(path):
+    with open(path, 'r', encoding='utf-8') as f:
+        return [line.strip() for line in f if line.strip()]
+
+
+tokenizer = BertTokenizer.from_pretrained('./Bert_Autoencoder/bert/bert-base-chinese')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+texts = load_text_file("./Bert_Autoencoder/data/data.txt")
+dataset = ChineseTextDataset(texts)
+dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+
+model = TextAutoencoder().to(device)
+optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
+
 EPOCHS = 5
-SMOOTHING = 0.1
-MODEL_PATH = "./Bert_Autoencoder/checkpoint/bert_autoencoder.pt"
-
-# ========== 示例语料 ==========
-with open("./Bert_Autoencoder/data/data.txt", "r", encoding="utf-8") as f:
-    sample_sentences = [line.strip() for line in f if line.strip()]
-
-# ========== 初始化 ==========
-model = BertAutoEncoder().to(DEVICE)
-dataset = SentenceDataset(sample_sentences)
-dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
-
-optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
-criterion = LabelSmoothingLoss(classes=tokenizer.vocab_size, smoothing=SMOOTHING, ignore_index=tokenizer.pad_token_id)
-
-# ========== 训练 ==========
 for epoch in range(EPOCHS):
-    loss = train(model, dataloader, optimizer, criterion)
-    #bleu = evaluate_bleu(model, dataset)
-    # "| BLEU: {bleu:.4f}"
-    print(f"Epoch {epoch+1} | Loss: {loss:.4f} ")
+    model.train()
+    total_loss = 0
+    for batch in tqdm(dataloader):
+        input_ids = batch['input_ids'].to(device)
+        attention_mask = batch['attention_mask'].to(device)
+        decoder_input_ids = batch['decoder_input_ids'].to(device)
+        decoder_target_ids = batch['decoder_target_ids'].to(device)
 
-# ========== 保存模型 =========
-torch.save(model.state_dict(), MODEL_PATH)
+        logits = model(input_ids, attention_mask, decoder_input_ids)
+        loss = F.cross_entropy(
+            logits.view(-1, logits.size(-1)),
+            decoder_target_ids.view(-1),
+            ignore_index=tokenizer.pad_token_id
+        )
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+
+    print(f"[Epoch {epoch+1}] Loss: {total_loss / len(dataloader):.4f}")
+
+torch.save(model.state_dict(), "./Bert_Autoencoder/checkpoint/text_autoencoder.pt")
